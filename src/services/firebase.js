@@ -1,27 +1,16 @@
-import { db } from "./firebase";
-import {
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  where,
-  serverTimestamp
-} from "firebase/firestore";
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
-export const criarProjeto = async (userId, data) => {
-  return addDoc(collection(db, "projects"), {
-    ...data,
-    ownerId: userId,
-    status: "active",
-    criadoEm: serverTimestamp(),
-  });
+const firebaseConfig = {
+  apiKey: "AIzaSyA0RprYSHqAZwtdV7AoWV8r3tFQke8AK2o",
+  authDomain: "in-flux.firebaseapp.com",
+  projectId: "in-flux",
+  storageBucket: "in-flux.firebasestorage.app",
+  messagingSenderId: "1084464047425",
+  appId: "1:1084464047425:web:36ea7a064f0e994ad8adc0"
 };
 
-export const meusProjetos = async (userId) => {
-  const q = query(
-    collection(db, "projects"),
-    where("ownerId", "==", userId)
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-};
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
