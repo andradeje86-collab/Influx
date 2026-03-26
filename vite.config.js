@@ -1,7 +1,5 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+export default {
+  base: '/nome-do-seu-repositorio/', // Ex: '/influx/'
+  // ... resto da sua configuração
+}
 
-export default defineConfig({
-  plugins: [react()],
-  base: '/Influx/'
-})
