@@ -109,7 +109,7 @@ function PhotoPicker({current,onPick,size=72}){
 // PIX Modal
 function PixModal({amount,onPay,onClose}){
   const [copied,setCopied]=useState(false);
-  const key="influx@pagamentos.com.br";
+  const key="2d970c88-833f-441d-bbe1-a0777afaa629";
   const copy=()=>{navigator.clipboard?.writeText(key).catch(()=>{});setCopied(true);setTimeout(()=>setCopied(false),2000);};
   return <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.6)",zIndex:900,display:"flex",alignItems:"flex-end"}}>
     <div style={{background:T.white,borderRadius:"24px 24px 0 0",padding:24,width:"100%",boxSizing:"border-box"}}>
@@ -306,10 +306,10 @@ function ProposalTimeline({proposal,role,onAction,onChat,onBack}){
 
       {/* Values */}
       <Card>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><div style={{fontSize:12,color:T.sub,fontFamily:"Poppins,sans-serif"}}>Valor total</div><div style={{fontSize:22,fontWeight:800,color:T.purple,fontFamily:"Poppins,sans-serif"}}>R$ {proposal.value},00</div></div>
-          {role==="influencer"&&<div style={{textAlign:"right"}}><div style={{fontSize:11,color:T.sub,fontFamily:"Poppins,sans-serif"}}>Você recebe (−20%)</div><div style={{fontSize:20,fontWeight:800,color:T.success,fontFamily:"Poppins,sans-serif"}}>R$ {proposal.netValue},00</div></div>}
-        </div>
+        {role==="brand"
+          ?<div><div style={{fontSize:12,color:T.sub,fontFamily:"Poppins,sans-serif"}}>Valor total da proposta</div><div style={{fontSize:22,fontWeight:800,color:T.purple,fontFamily:"Poppins,sans-serif"}}>R$ {proposal.value},00</div></div>
+          :<div><div style={{fontSize:12,color:T.sub,fontFamily:"Poppins,sans-serif"}}>Você vai receber</div><div style={{fontSize:26,fontWeight:900,color:T.success,fontFamily:"Poppins,sans-serif"}}>R$ {proposal.netValue},00</div><div style={{fontSize:11,color:T.sub,fontFamily:"Poppins,sans-serif",marginTop:2}}>Pago via PIX após aprovação</div></div>
+        }
         {role==="influencer"&&proposal.pixKey&&<div style={{marginTop:10,padding:"8px 12px",background:"#f0ebff",borderRadius:10,fontSize:11,color:T.purple,fontFamily:"Poppins,sans-serif",fontWeight:600}}>🔑 PIX: {proposal.pixKey}</div>}
       </Card>
 
@@ -449,11 +449,68 @@ function BrandFinance({user,proposals,onDeposit}){
   </div>;
 }
 
-function BrandProjects({proposals,projects,onCreate,onView}){
+const FAKE_CANDS=[
+  {id:"c1",name:"Ana Fitness",   avatar:"AF",instagram:"@fitlife_ana",  followers:"1.01K",engagement:"13.74",category:"Fitness"},
+  {id:"c2",name:"Turistando SLZ",avatar:"TS",instagram:"@turistandoslz",followers:"127K",  engagement:"22.91",category:"Viagem"},
+  {id:"c3",name:"Natureza BR",   avatar:"NB",instagram:"@natureza_br",  followers:"2.48M", engagement:"3.16", category:"Natureza"},
+  {id:"c4",name:"Bea Zau",       avatar:"BZ",instagram:"@beazau",       followers:"1.83M", engagement:"3.45", category:"Moda"},
+  {id:"c5",name:"Tech BR",       avatar:"TB",instagram:"@techbr",       followers:"2.24K", engagement:"2.14", category:"Tech"},
+];
+function ProjectDetail({project,onBack,onHireProposal,proposals}){
+  const [hired,setHired]=useState(null);
+  const cands=FAKE_CANDS.slice(0,Math.max(project.candidates.length,2));
+  const related=proposals.filter(p=>["paid","in_progress","upload_done","approved","completed"].includes(p.status));
+  return <div style={{flex:1,overflowY:"auto"}}>
+    <Hdr title="Detalhes do Projeto" onBack={onBack}/>
+    <div style={{padding:"8px 20px 24px"}}>
+      <Card>
+        <div style={{fontWeight:700,fontSize:15,color:T.purple,fontFamily:"Poppins,sans-serif",marginBottom:6}}>{project.title}</div>
+        <div style={{fontSize:12,color:T.sub,fontFamily:"Poppins,sans-serif",lineHeight:1.6,marginBottom:10}}>{project.desc}</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
+          <span style={{background:"#f0ebff",color:T.purple,fontSize:11,fontFamily:"Poppins,sans-serif",fontWeight:700,padding:"3px 12px",borderRadius:50}}>{project.type}</span>
+          <Badge s={project.status}/>
+        </div>
+        <div style={{fontSize:22,fontWeight:900,color:T.purple,fontFamily:"Poppins,sans-serif"}}>R$ {project.value},00</div>
+      </Card>
+      {related.length>0&&<>
+        <div style={{fontSize:14,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",marginBottom:10}}>📋 Propostas ativas</div>
+        {related.map((p,i)=>(
+          <Card key={p.id} onClick={()=>onHireProposal(p)} style={{display:"flex",alignItems:"center",gap:12}}>
+            <Av initials={p.influencerAvatar} size={40} idx={i}/>
+            <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13,color:T.text,fontFamily:"Poppins,sans-serif"}}>{p.influencerName}</div><div style={{fontSize:11,color:T.sub,fontFamily:"Poppins,sans-serif"}}>{p.type} · {p.date}</div></div>
+            <div style={{textAlign:"right"}}><div style={{fontWeight:800,color:T.purple,fontFamily:"Poppins,sans-serif"}}>R$ {p.value}</div><Badge s={p.status}/></div>
+          </Card>
+        ))}
+      </>}
+      <div style={{fontSize:14,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",margin:"16px 0 10px"}}>👥 Candidatos ({cands.length})</div>
+      {cands.map((c,i)=>(
+        <Card key={c.id} style={{marginBottom:10}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+            <Av initials={c.avatar} size={48} idx={i}/>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:700,fontSize:14,color:T.text,fontFamily:"Poppins,sans-serif"}}>{c.name}</div>
+              <div style={{fontSize:12,color:T.sub,fontFamily:"Poppins,sans-serif"}}>{c.instagram}</div>
+              <span style={{background:"#f0ebff",color:T.purple,fontSize:10,fontFamily:"Poppins,sans-serif",fontWeight:700,padding:"2px 9px",borderRadius:50}}>{c.category}</span>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+            <div style={{textAlign:"center",background:T.bg,borderRadius:10,padding:"8px"}}><div style={{fontWeight:800,fontSize:14,color:T.purple,fontFamily:"Poppins,sans-serif"}}>{c.followers}</div><div style={{fontSize:10,color:T.sub,fontFamily:"Poppins,sans-serif"}}>seguidores</div></div>
+            <div style={{textAlign:"center",background:T.bg,borderRadius:10,padding:"8px"}}><div style={{fontWeight:800,fontSize:14,color:T.pink,fontFamily:"Poppins,sans-serif"}}>{c.engagement}%</div><div style={{fontSize:10,color:T.sub,fontFamily:"Poppins,sans-serif"}}>engajamento</div></div>
+          </div>
+          {hired===c.id
+            ?<div style={{padding:"10px",background:"#e8f5e9",borderRadius:12,textAlign:"center",fontSize:12,fontWeight:700,color:"#2E7D32",fontFamily:"Poppins,sans-serif"}}>✅ Proposta aceita! Realize o pagamento para iniciar.</div>
+            :<Btn label="✅ Aceitar proposta" onClick={()=>setHired(c.id)} v="pink" full/>
+          }
+        </Card>
+      ))}
+    </div>
+  </div>;
+}
+function BrandProjects({proposals,projects,onCreate,onViewProposal,onViewProject}){
   const active=proposals.filter(p=>["paid","in_progress","upload_done"].includes(p.status));
   const done=proposals.filter(p=>["approved","completed"].includes(p.status));
   const Row=({p,dim})=>(
-    <Card onClick={()=>onView(p)} style={{display:"flex",alignItems:"center",gap:12,opacity:dim?.7:1}}>
+    <Card onClick={()=>onViewProposal(p)} style={{display:"flex",alignItems:"center",gap:12,opacity:dim?.7:1}}>
       <Av initials={p.influencerAvatar} size={40} idx={1}/>
       <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13,color:dim?T.sub:T.purple,fontFamily:"Poppins,sans-serif"}}>#{p.id} | {p.type} 1x</div><div style={{fontSize:11,color:T.sub,fontFamily:"Poppins,sans-serif"}}>{p.date}</div></div>
       <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-end"}}><span style={{fontWeight:800,color:dim?T.sub:T.purple,fontFamily:"Poppins,sans-serif",fontSize:14}}>R$ {p.value}</span><Badge s={p.status}/></div>
@@ -466,19 +523,25 @@ function BrandProjects({proposals,projects,onCreate,onView}){
         <span style={{color:T.white,fontSize:15,fontWeight:700,fontFamily:"Poppins,sans-serif"}}>+ Criar Projeto</span><span style={{fontSize:26}}>📋</span>
       </button>
       {projects.length>0&&<>
-        <div style={{fontSize:13,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",marginBottom:8}}>Meus Projetos ({projects.length})</div>
-        {projects.map(p=>(
-          <Card key={p.id} style={{marginBottom:10}}>
-            <div style={{fontWeight:700,fontSize:13,color:T.purple,fontFamily:"Poppins,sans-serif"}}>{p.title}</div>
-            <div style={{fontSize:11,color:T.sub,fontFamily:"Poppins,sans-serif",marginTop:2}}>{p.type} · R$ {p.value} · {p.candidates.length} candidatos</div>
-            <div style={{marginTop:6}}><Badge s={p.status}/></div>
+        <div style={{fontSize:13,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",marginBottom:8}}>📁 Meus Projetos ({projects.length})</div>
+        {projects.map((p,i)=>(
+          <Card key={p.id} onClick={()=>onViewProject(p)} style={{marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13,color:T.purple,fontFamily:"Poppins,sans-serif"}}>{p.title}</div><div style={{fontSize:11,color:T.sub,fontFamily:"Poppins,sans-serif",marginTop:2}}>{p.type} · R$ {p.value},00</div></div>
+              <Badge s={p.status}/>
+            </div>
+            <div style={{marginTop:10,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span style={{fontSize:12,fontWeight:700,color:p.candidates.length>0?T.pink:T.sub,fontFamily:"Poppins,sans-serif"}}>👥 {p.candidates.length} candidato(s)</span>
+              <span style={{fontSize:12,color:T.purple,fontFamily:"Poppins,sans-serif",fontWeight:600}}>Ver →</span>
+            </div>
           </Card>
         ))}
       </>}
-      <div style={{fontSize:13,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",margin:"16px 0 8px"}}>Em andamento</div>
+      <div style={{fontSize:13,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",margin:"16px 0 8px"}}>⏳ Em andamento</div>
       {active.length===0&&<div style={{color:T.sub,fontFamily:"Poppins,sans-serif",fontSize:12,marginBottom:12}}>Nenhuma proposta ativa.</div>}
       {active.map(p=><Row key={p.id} p={p}/>)}
-      <div style={{fontSize:13,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",margin:"16px 0 8px"}}>Realizadas</div>
+      <div style={{fontSize:13,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",margin:"16px 0 8px"}}>✅ Realizadas</div>
+      {done.length===0&&<div style={{color:T.sub,fontFamily:"Poppins,sans-serif",fontSize:12}}>Nenhuma concluída ainda.</div>}
       {done.map(p=><Row key={p.id} p={p} dim/>)}
     </div>
   </div>;
@@ -579,7 +642,7 @@ function InfHome({user,onTab,onGo,proposals}){
         <Card key={p.id} onClick={()=>onGo("proposal",p)} style={{display:"flex",alignItems:"center",gap:12}}>
           <div style={{width:38,height:38,borderRadius:12,background:T.grad1,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>📄</div>
           <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13,color:T.text,fontFamily:"Poppins,sans-serif"}}>Proposta #{p.id} · {p.type}</div><div style={{fontSize:11,color:T.sub,fontFamily:"Poppins,sans-serif"}}>{p.date}</div></div>
-          <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-end"}}><span style={{fontWeight:800,color:T.success,fontFamily:"Poppins,sans-serif",fontSize:13}}>R$ {p.netValue}</span><Badge s={p.status}/></div>
+          <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-end"}}><span style={{fontWeight:800,color:T.success,fontFamily:"Poppins,sans-serif",fontSize:13}}>R$ {p.netValue},00</span><Badge s={p.status}/></div>
         </Card>
       ))}
     </div>
@@ -874,6 +937,7 @@ function App(){
         return <ChatScreen proposal={live} role={user.role} onBack={back} onSend={sendMsg}/>;
       }
       if(screen.type==="create") return <CreateProject onBack={back} onDone={addProject}/>;
+      if(screen.type==="project-detail") return <ProjectDetail project={screen.data} proposals={proposals} onBack={back} onHireProposal={p=>go("proposal",p)}/>;
       if(screen.type==="edit-profile") return isBrand
         ?<BrandEditProfile user={user} onBack={back} onSave={saveUser}/>
         :<InfProfileEdit user={user} onBack={back} onSave={saveUser}/>;
@@ -900,7 +964,7 @@ function App(){
       if(tab==="home") return <BrandHome user={user} onTab={setTab} onGo={go} proposals={proposals}/>;
       if(tab==="explore") return <ExploreScreen onInfluencer={inf=>go("inf-detail",inf)}/>;
       if(tab==="finance") return <BrandFinance user={user} proposals={proposals} onDeposit={deposit}/>;
-      if(tab==="projects") return <BrandProjects proposals={proposals} projects={projects} onCreate={()=>go("create")} onView={p=>go("proposal",p)}/>;
+      if(tab==="projects") return <BrandProjects proposals={proposals} projects={projects} onCreate={()=>go("create")} onViewProposal={p=>go("proposal",p)} onViewProject={p=>go("project-detail",p)}/>;
       if(tab==="profile") return <ProfileScreen user={user} onLogout={logout} onEdit={()=>go("edit-profile")}/>;
     } else {
       if(tab==="home") return <InfHome user={user} onTab={setTab} onGo={go} proposals={proposals}/>;
