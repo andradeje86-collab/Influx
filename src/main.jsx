@@ -106,23 +106,48 @@ function PhotoPicker({current,onPick,size=72}){
   </div>;
 }
 
-// PIX Modal
-function PixModal({amount,onPay,onClose}){
+// PIX Modal — for hire payment (fixed amount) and deposit (custom amount)
+const PIX_KEY="2d970c88-833f-441d-bbe1-a0777afaa629";
+function PixModal({amount,label,onPay,onClose,mode="pay"}){
   const [copied,setCopied]=useState(false);
-  const key="2d970c88-833f-441d-bbe1-a0777afaa629";
-  const copy=()=>{navigator.clipboard?.writeText(key).catch(()=>{});setCopied(true);setTimeout(()=>setCopied(false),2000);};
-  return <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.6)",zIndex:900,display:"flex",alignItems:"flex-end"}}>
-    <div style={{background:T.white,borderRadius:"24px 24px 0 0",padding:24,width:"100%",boxSizing:"border-box"}}>
-      <div style={{fontSize:18,fontWeight:800,color:T.purple,fontFamily:"Poppins,sans-serif",marginBottom:4}}>⚡ Pagar via PIX</div>
-      <div style={{fontSize:13,color:T.sub,fontFamily:"Poppins,sans-serif",marginBottom:16}}>Valor: <b style={{color:T.purple}}>R$ {amount},00</b></div>
-      <div style={{background:"#f0ebff",borderRadius:14,padding:"12px 16px",marginBottom:12}}>
-        <div style={{fontSize:11,color:T.sub,fontFamily:"Poppins,sans-serif",marginBottom:4}}>CHAVE PIX INFLUX</div>
-        <div style={{fontSize:13,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif"}}>{key}</div>
+  const [customAmt,setCustomAmt]=useState(amount||"");
+  const [comprovante,setComprovante]=useState("");
+  const [step,setStep]=useState(1); // 1=show key, 2=confirm
+  const copy=()=>{navigator.clipboard?.writeText(PIX_KEY).catch(()=>{});setCopied(true);setTimeout(()=>setCopied(false),2500);};
+  const finalAmt=mode==="deposit"?customAmt:amount;
+  const confirm=()=>{
+    if(mode==="deposit"&&!customAmt)return alert("Informe o valor depositado.");
+    onPay(Number(finalAmt),comprovante);
+  };
+  return <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.65)",zIndex:900,display:"flex",alignItems:"flex-end"}}>
+    <div style={{background:T.white,borderRadius:"24px 24px 0 0",padding:24,width:"100%",boxSizing:"border-box",maxHeight:"85vh",overflowY:"auto"}}>
+      <div style={{fontSize:18,fontWeight:800,color:T.purple,fontFamily:"Poppins,sans-serif",marginBottom:4}}>
+        {mode==="deposit"?"💰 Depositar via PIX":"⚡ Pagar influencer via PIX"}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-        <Btn label={copied?"✅ Copiado!":"📋 Copiar chave"} onClick={copy} v="purple" off={copied}/>
-        <Btn label="✅ Já paguei!" onClick={onPay} v="green"/>
+      {mode==="pay"&&label&&<div style={{fontSize:13,color:T.sub,fontFamily:"Poppins,sans-serif",marginBottom:4}}>{label}</div>}
+      {mode==="pay"&&<div style={{fontSize:26,fontWeight:900,color:T.purple,fontFamily:"Poppins,sans-serif",marginBottom:16}}>R$ {amount},00</div>}
+      {mode==="deposit"&&<div style={{marginBottom:14}}>
+        <label style={{display:"block",fontSize:11,fontWeight:700,color:T.sub,marginBottom:5,fontFamily:"Poppins,sans-serif",textTransform:"uppercase",letterSpacing:1}}>Valor a depositar (R$)</label>
+        <input type="number" value={customAmt} onChange={e=>setCustomAmt(e.target.value)} placeholder="Ex: 100" style={{width:"100%",padding:"13px 16px",borderRadius:14,border:`2px solid ${T.purple}`,fontSize:18,fontWeight:700,fontFamily:"Poppins,sans-serif",background:T.bg,color:T.purple,outline:"none",boxSizing:"border-box"}}/>
+      </div>}
+      <div style={{background:"#f0ebff",borderRadius:14,padding:"14px 16px",marginBottom:14}}>
+        <div style={{fontSize:10,color:T.sub,fontFamily:"Poppins,sans-serif",marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>Chave PIX — Influx</div>
+        <div style={{fontSize:12,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",wordBreak:"break-all"}}>{PIX_KEY}</div>
       </div>
+      <Btn label={copied?"✅ Copiado!":"📋 Copiar chave PIX"} onClick={copy} v="purple" full off={copied}/>
+      <div style={{height:12}}/>
+      <div style={{marginBottom:14}}>
+        <label style={{display:"block",fontSize:11,fontWeight:700,color:T.sub,marginBottom:5,fontFamily:"Poppins,sans-serif",textTransform:"uppercase",letterSpacing:1}}>
+          {mode==="deposit"?"Número do comprovante (opcional)":"Número do comprovante (opcional)"}
+        </label>
+        <input type="text" value={comprovante} onChange={e=>setComprovante(e.target.value)} placeholder="Cole aqui o ID ou número do comprovante"
+          style={{width:"100%",padding:"11px 16px",borderRadius:14,border:`1.5px solid ${T.border}`,fontSize:13,fontFamily:"Poppins,sans-serif",background:T.bg,color:T.text,outline:"none",boxSizing:"border-box"}}/>
+      </div>
+      <div style={{padding:"10px 14px",background:"#fff8e1",borderRadius:12,marginBottom:14,fontSize:12,color:T.warn,fontFamily:"Poppins,sans-serif",fontWeight:600}}>
+        ⚠️ Após clicar em "Já paguei", o admin irá confirmar o pagamento em até 1h.
+      </div>
+      <Btn label="✅ Já paguei! Avisar admin" onClick={confirm} v="green" full/>
+      <div style={{height:10}}/>
       <Btn label="Cancelar" onClick={onClose} v="ghost" full/>
     </div>
   </div>;
@@ -420,8 +445,8 @@ function ExploreScreen({onInfluencer,userCats}){
 function BrandFinance({user,proposals,onDeposit}){
   const [showPix,setShowPix]=useState(false);
   const total=proposals.reduce((s,h)=>s+h.value,0);
-  return <div style={{flex:1,overflowY:"auto"}}>
-    {showPix&&<PixModal amount={100} onPay={()=>{onDeposit(100);setShowPix(false);}} onClose={()=>setShowPix(false)}/>}
+  return <div style={{flex:1,overflowY:"auto",position:"relative"}}>
+    {showPix&&<PixModal mode="deposit" onPay={(amt,comp)=>{onDeposit(amt,comp);setShowPix(false);}} onClose={()=>setShowPix(false)}/>}
     <Hdr title="Finanças"/>
     <div style={{padding:"8px 20px 20px"}}>
       <BCard label="Saldo disponível" value={`R$ ${user.balance||0},00`} icon="💰" grad={T.grad1}/>
@@ -456,11 +481,28 @@ const FAKE_CANDS=[
   {id:"c4",name:"Bea Zau",       avatar:"BZ",instagram:"@beazau",       followers:"1.83M", engagement:"3.45", category:"Moda"},
   {id:"c5",name:"Tech BR",       avatar:"TB",instagram:"@techbr",       followers:"2.24K", engagement:"2.14", category:"Tech"},
 ];
-function ProjectDetail({project,onBack,onHireProposal,proposals}){
-  const [hired,setHired]=useState(null);
+function ProjectDetail({project,onBack,onHireProposal,onHireAccept,proposals}){
+  const [hiredCand,setHiredCand]=useState(null);
+  const [showPix,setShowPix]=useState(false);
+  const [paidCand,setPaidCand]=useState(null);
   const cands=FAKE_CANDS.slice(0,Math.max(project.candidates.length,2));
-  const related=proposals.filter(p=>["paid","in_progress","upload_done","approved","completed"].includes(p.status));
-  return <div style={{flex:1,overflowY:"auto"}}>
+  const related=proposals.filter(p=>["created","paid","in_progress","upload_done","approved","completed"].includes(p.status));
+
+  const handleAccept=(c)=>{setHiredCand(c);setShowPix(true);};
+  const handlePaid=(amt,comprovante)=>{
+    setShowPix(false);
+    setPaidCand(hiredCand);
+    onHireAccept(hiredCand,project,amt,comprovante);
+  };
+
+  return <div style={{flex:1,overflowY:"auto",position:"relative"}}>
+    {showPix&&hiredCand&&<PixModal
+      mode="pay"
+      amount={project.value}
+      label={`Pagamento para ${hiredCand.name} — ${project.type}`}
+      onPay={handlePaid}
+      onClose={()=>setShowPix(false)}
+    />}
     <Hdr title="Detalhes do Projeto" onBack={onBack}/>
     <div style={{padding:"8px 20px 24px"}}>
       <Card>
@@ -472,19 +514,25 @@ function ProjectDetail({project,onBack,onHireProposal,proposals}){
         </div>
         <div style={{fontSize:22,fontWeight:900,color:T.purple,fontFamily:"Poppins,sans-serif"}}>R$ {project.value},00</div>
       </Card>
+
       {related.length>0&&<>
         <div style={{fontSize:14,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",marginBottom:10}}>📋 Propostas ativas</div>
         {related.map((p,i)=>(
           <Card key={p.id} onClick={()=>onHireProposal(p)} style={{display:"flex",alignItems:"center",gap:12}}>
             <Av initials={p.influencerAvatar} size={40} idx={i}/>
-            <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13,color:T.text,fontFamily:"Poppins,sans-serif"}}>{p.influencerName}</div><div style={{fontSize:11,color:T.sub,fontFamily:"Poppins,sans-serif"}}>{p.type} · {p.date}</div></div>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:700,fontSize:13,color:T.text,fontFamily:"Poppins,sans-serif"}}>{p.influencerName}</div>
+              <div style={{fontSize:11,color:T.sub,fontFamily:"Poppins,sans-serif"}}>{p.type} · {p.date}</div>
+            </div>
             <div style={{textAlign:"right"}}><div style={{fontWeight:800,color:T.purple,fontFamily:"Poppins,sans-serif"}}>R$ {p.value}</div><Badge s={p.status}/></div>
           </Card>
         ))}
       </>}
+
       <div style={{fontSize:14,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",margin:"16px 0 10px"}}>👥 Candidatos ({cands.length})</div>
-      {cands.map((c,i)=>(
-        <Card key={c.id} style={{marginBottom:10}}>
+      {cands.map((c,i)=>{
+        const isPaid=paidCand&&paidCand.id===c.id;
+        return <Card key={c.id} style={{marginBottom:10}}>
           <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
             <Av initials={c.avatar} size={48} idx={i}/>
             <div style={{flex:1}}>
@@ -497,12 +545,15 @@ function ProjectDetail({project,onBack,onHireProposal,proposals}){
             <div style={{textAlign:"center",background:T.bg,borderRadius:10,padding:"8px"}}><div style={{fontWeight:800,fontSize:14,color:T.purple,fontFamily:"Poppins,sans-serif"}}>{c.followers}</div><div style={{fontSize:10,color:T.sub,fontFamily:"Poppins,sans-serif"}}>seguidores</div></div>
             <div style={{textAlign:"center",background:T.bg,borderRadius:10,padding:"8px"}}><div style={{fontWeight:800,fontSize:14,color:T.pink,fontFamily:"Poppins,sans-serif"}}>{c.engagement}%</div><div style={{fontSize:10,color:T.sub,fontFamily:"Poppins,sans-serif"}}>engajamento</div></div>
           </div>
-          {hired===c.id
-            ?<div style={{padding:"10px",background:"#e8f5e9",borderRadius:12,textAlign:"center",fontSize:12,fontWeight:700,color:"#2E7D32",fontFamily:"Poppins,sans-serif"}}>✅ Proposta aceita! Realize o pagamento para iniciar.</div>
-            :<Btn label="✅ Aceitar proposta" onClick={()=>setHired(c.id)} v="pink" full/>
+          {isPaid
+            ?<div style={{padding:"12px",background:"#e8f5e9",borderRadius:12,textAlign:"center",fontSize:12,fontWeight:700,color:"#2E7D32",fontFamily:"Poppins,sans-serif"}}>
+              ✅ Pagamento enviado! Aguardando confirmação do admin.<br/>
+              <span style={{fontWeight:400,fontSize:11}}>O influencer será notificado em breve.</span>
+            </div>
+            :<Btn label={`✅ Aceitar e pagar R$ ${project.value},00`} onClick={()=>handleAccept(c)} v="pink" full/>
           }
-        </Card>
-      ))}
+        </Card>;
+      })}
     </div>
   </div>;
 }
@@ -793,25 +844,83 @@ function InfProfileEdit({user,onBack,onSave}){
 // ══════════════════════════════════════════════════════════════════════════════
 // ADMIN PANEL
 // ══════════════════════════════════════════════════════════════════════════════
-function AdminPanel({proposals,onLogout}){
-  const [tab,setTab]=useState("overview");
-  const [detail,setDetail]=useState(null);
+function AdminPanel({proposals,deposits,onApproveDeposit,onApproveProposal,onLogout}){
+  const [tab,setTab]=useState("pix");
   const brands=Object.values(INIT_USERS).filter(u=>u.role==="brand");
   const infs=Object.values(INIT_USERS).filter(u=>u.role==="influencer");
   const revenue=proposals.filter(p=>p.status==="completed").reduce((s,p)=>s+(p.value*FEE),0);
-  const tabs=[{id:"overview",label:"Visão Geral",icon:"📊"},{id:"brands",label:"Marcas",icon:"🏢"},{id:"infs",label:"Influencers",icon:"⭐"},{id:"proposals",label:"Propostas",icon:"📋"}];
+  const pendingDeps=deposits.filter(d=>d.status==="pending");
+  const pendingPay=proposals.filter(p=>p.pixPending);
+  const tabs=[{id:"pix",label:"PIX ⚡",icon:"💸"},{id:"overview",label:"Visão Geral",icon:"📊"},{id:"brands",label:"Marcas",icon:"🏢"},{id:"infs",label:"Influencers",icon:"⭐"},{id:"proposals",label:"Propostas",icon:"📋"}];
 
   return <div style={{flex:1,display:"flex",flexDirection:"column",background:T.bg}}>
     <div style={{background:T.grad1,padding:"20px 20px 16px",flexShrink:0}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div><div style={{fontSize:22,fontWeight:800,color:T.white,fontFamily:"Poppins,sans-serif"}}>🛡️ Admin Influx</div></div>
+        <div>
+          <div style={{fontSize:22,fontWeight:800,color:T.white,fontFamily:"Poppins,sans-serif"}}>🛡️ Admin Influx</div>
+          {(pendingDeps.length+pendingPay.length)>0&&<div style={{fontSize:12,color:"#FFD54F",fontFamily:"Poppins,sans-serif",fontWeight:600,marginTop:2}}>⚠️ {pendingDeps.length+pendingPay.length} pagamento(s) aguardando aprovação</div>}
+        </div>
         <button onClick={onLogout} style={{background:"rgba(255,255,255,.15)",border:"none",borderRadius:10,padding:"7px 14px",color:T.white,fontFamily:"Poppins,sans-serif",fontSize:12,fontWeight:600,cursor:"pointer"}}>Sair</button>
       </div>
       <div style={{display:"flex",gap:8,marginTop:14,overflowX:"auto",scrollbarWidth:"none"}}>
-        {tabs.map(t=><button key={t.id} onClick={()=>{setTab(t.id);setDetail(null);}} style={{background:tab===t.id?"rgba(255,255,255,.25)":"rgba(255,255,255,.1)",border:`1.5px solid ${tab===t.id?"rgba(255,255,255,.5)":"transparent"}`,borderRadius:50,padding:"6px 14px",color:T.white,fontFamily:"Poppins,sans-serif",fontSize:11,fontWeight:700,cursor:"pointer",flexShrink:0}}>{t.icon} {t.label}</button>)}
+        {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{background:tab===t.id?"rgba(255,255,255,.25)":"rgba(255,255,255,.1)",border:`1.5px solid ${tab===t.id?"rgba(255,255,255,.5)":"transparent"}`,borderRadius:50,padding:"6px 14px",color:T.white,fontFamily:"Poppins,sans-serif",fontSize:11,fontWeight:700,cursor:"pointer",flexShrink:0,position:"relative"}}>
+          {t.icon} {t.label}
+          {t.id==="pix"&&(pendingDeps.length+pendingPay.length)>0&&<span style={{position:"absolute",top:-4,right:-4,background:T.pink,borderRadius:"50%",width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:T.white}}>{pendingDeps.length+pendingPay.length}</span>}
+        </button>)}
       </div>
     </div>
     <div style={{flex:1,overflowY:"auto",padding:"16px 20px 20px"}}>
+
+      {tab==="pix"&&<>
+        <div style={{fontSize:14,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",marginBottom:12}}>💰 Depósitos aguardando aprovação ({pendingDeps.length})</div>
+        {pendingDeps.length===0&&<div style={{color:T.sub,fontFamily:"Poppins,sans-serif",fontSize:13,marginBottom:20}}>Nenhum depósito pendente ✅</div>}
+        {pendingDeps.map((d,i)=>(
+          <Card key={d.id} style={{marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+              <div>
+                <div style={{fontWeight:700,fontSize:14,color:T.text,fontFamily:"Poppins,sans-serif"}}>{d.userName}</div>
+                <div style={{fontSize:12,color:T.sub,fontFamily:"Poppins,sans-serif"}}>{d.date}</div>
+                {d.comprovante&&<div style={{fontSize:11,color:T.purple,fontFamily:"Poppins,sans-serif",marginTop:2}}>Comprovante: {d.comprovante}</div>}
+              </div>
+              <div style={{fontSize:22,fontWeight:900,color:T.success,fontFamily:"Poppins,sans-serif"}}>R$ {d.amount},00</div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <Btn label="✅ Aprovar" onClick={()=>onApproveDeposit(d.id,"approved")} v="green"/>
+              <Btn label="❌ Recusar" onClick={()=>onApproveDeposit(d.id,"rejected")} v="danger"/>
+            </div>
+          </Card>
+        ))}
+
+        <div style={{fontSize:14,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",margin:"20px 0 12px"}}>⚡ Pagamentos de publi pendentes ({pendingPay.length})</div>
+        {pendingPay.length===0&&<div style={{color:T.sub,fontFamily:"Poppins,sans-serif",fontSize:13}}>Nenhum pagamento pendente ✅</div>}
+        {pendingPay.map((p,i)=>(
+          <Card key={p.id} style={{marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+              <div>
+                <div style={{fontWeight:700,fontSize:14,color:T.text,fontFamily:"Poppins,sans-serif"}}>Proposta #{p.id}</div>
+                <div style={{fontSize:12,color:T.sub,fontFamily:"Poppins,sans-serif"}}>{p.influencerName} · {p.type}</div>
+                {p.pixComprovante&&<div style={{fontSize:11,color:T.purple,fontFamily:"Poppins,sans-serif",marginTop:2}}>Comprovante: {p.pixComprovante}</div>}
+              </div>
+              <div style={{fontSize:20,fontWeight:900,color:T.purple,fontFamily:"Poppins,sans-serif"}}>R$ {p.value},00</div>
+            </div>
+            <Badge s={p.status}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:10}}>
+              <Btn label="✅ Confirmar PIX" onClick={()=>onApproveProposal(p.id,"paid")} v="green"/>
+              <Btn label="❌ Recusar" onClick={()=>onApproveProposal(p.id,"created")} v="danger"/>
+            </div>
+          </Card>
+        ))}
+
+        <div style={{fontSize:14,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",margin:"20px 0 12px"}}>📊 Depósitos aprovados</div>
+        {deposits.filter(d=>d.status!=="pending").map((d,i)=>(
+          <Card key={d.id} style={{display:"flex",alignItems:"center",gap:12,opacity:.7}}>
+            <div style={{width:36,height:36,borderRadius:10,background:d.status==="approved"?"#e8f5e9":"#fce4ec",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>{d.status==="approved"?"✓":"✕"}</div>
+            <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13,color:T.text,fontFamily:"Poppins,sans-serif"}}>{d.userName}</div><div style={{fontSize:11,color:T.sub,fontFamily:"Poppins,sans-serif"}}>{d.date}</div></div>
+            <div style={{fontWeight:800,color:d.status==="approved"?T.success:T.danger,fontFamily:"Poppins,sans-serif"}}>R$ {d.amount}</div>
+          </Card>
+        ))}
+      </>}
+
       {tab==="overview"&&<>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
           {[{label:"Usuários",value:Object.keys(INIT_USERS).length,icon:"👥",color:T.purple},{label:"Marcas",value:brands.length,icon:"🏢",color:T.pink},{label:"Influencers",value:infs.length,icon:"⭐",color:T.warn},{label:"Receita 20%",value:`R$${revenue}`,icon:"💰",color:T.success}].map((s,i)=>(
@@ -844,6 +953,8 @@ function AdminPanel({proposals,onLogout}){
 // ══════════════════════════════════════════════════════════════════════════════
 // ROOT APP
 // ══════════════════════════════════════════════════════════════════════════════
+const now=()=>new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+
 function App(){
   const [usersDB,setUsersDB]=useState(()=>({...INIT_USERS,...LS("influx_users",{})}));
   const [user,setUser]=useState(()=>LS("influx_current",null));
@@ -853,29 +964,45 @@ function App(){
   const [proposals,setProposals]=useState(()=>LS("influx_proposals",INIT_PROPOSALS));
   const [projects,setProjects]=useState(()=>LS("influx_projects",INIT_PROJECTS));
   const [applied,setApplied]=useState(()=>LS("influx_applied",["p1","p2"]));
+  const [deposits,setDeposits]=useState(()=>LS("influx_deposits",[]));
+  // Inf notifications: list of {id,msg,read}
+  const [infNotifs,setInfNotifs]=useState(()=>LS("influx_inf_notifs",[]));
 
   // Persist
   useEffect(()=>SS("influx_proposals",proposals),[proposals]);
   useEffect(()=>SS("influx_projects",projects),[projects]);
   useEffect(()=>SS("influx_applied",applied),[applied]);
   useEffect(()=>SS("influx_current",user),[user]);
+  useEffect(()=>SS("influx_deposits",deposits),[deposits]);
+  useEffect(()=>SS("influx_inf_notifs",infNotifs),[infNotifs]);
 
+  // Show pending notif to influencer on login
   useEffect(()=>{
     if(!user)return;
-    if(user.role==="influencer"){const t=setTimeout(()=>setToast({msg:"🔔 Nova publi: 'Reels de lançamento' — R$ 40,00!",type:"info"}),3500);return()=>clearTimeout(t);}
-    if(user.role==="brand"){const t=setTimeout(()=>setToast({msg:"⭐ 2 influencers se candidataram ao seu projeto!",type:"info"}),4000);return()=>clearTimeout(t);}
+    if(user.role==="influencer"){
+      const unread=infNotifs.filter(n=>!n.read);
+      if(unread.length>0){
+        setToast({msg:unread[0].msg,type:"warn"});
+        setInfNotifs(prev=>prev.map(n=>({...n,read:true})));
+      } else {
+        const t=setTimeout(()=>setToast({msg:"🔔 Nova publi disponível: 'Reels' — R$ 40,00!",type:"info"}),3500);
+        return()=>clearTimeout(t);
+      }
+    }
+    if(user.role==="brand"){
+      const t=setTimeout(()=>setToast({msg:"⭐ 2 influencers se candidataram ao seu projeto!",type:"info"}),4000);
+      return()=>clearTimeout(t);
+    }
   },[user]);
 
   const go=useCallback((type,data=null)=>setScreen({type,data}),[]);
   const back=useCallback(()=>setScreen(null),[]);
-
   const logout=()=>{setUser(null);SS("influx_current",null);setScreen(null);setTab("home");};
-
   const login=(u)=>{setUser(u);setTab("home");};
 
   const advanceProposal=(id,newStatus,content=null)=>{
-    setProposals(prev=>prev.map(p=>p.id===id?{...p,status:newStatus,...(content?{content}:{})}:p));
-    const msgs={upload_done:"📤 Conteúdo enviado! Aguardando aprovação.",approved:"💸 Aprovado! PIX em até 24h.",paid:"💰 Pagamento confirmado!",in_progress:"▶️ Serviço iniciado!"};
+    setProposals(prev=>prev.map(p=>p.id===id?{...p,status:newStatus,...(content?{content}:{}),pixPending:newStatus==="created"?false:undefined}:p));
+    const msgs={upload_done:"📤 Conteúdo enviado! Aguardando aprovação.",approved:"💸 Aprovado! PIX em até 24h.",paid:"💰 Pagamento confirmado! Influencer notificado.",in_progress:"▶️ Serviço iniciado!"};
     setToast({msg:msgs[newStatus]||"Status atualizado!",type:"success"});
     setScreen(prev=>prev?.type==="proposal"?{...prev,data:{...prev.data,status:newStatus,...(content?{content}:{})}}:prev);
   };
@@ -883,8 +1010,7 @@ function App(){
   const sendMsg=(propId,msg)=>{
     setProposals(prev=>prev.map(p=>p.id===propId?{...p,messages:[...p.messages,msg]}:p));
     setScreen(prev=>{
-      if(prev?.type==="chat"){return{...prev,data:{...prev.data,messages:[...prev.data.messages,msg]}};}
-      if(prev?.type==="proposal"){const updated=proposals.find(p=>p.id===propId);return{...prev,data:{...prev.data,messages:[...(prev.data.messages||[]),msg]}};}
+      if(prev?.type==="chat")return{...prev,data:{...prev.data,messages:[...prev.data.messages,msg]}};
       return prev;
     });
   };
@@ -897,17 +1023,74 @@ function App(){
   };
 
   const addProject=(proj)=>{
-    const updated=[proj,...projects];
-    setProjects(updated);
+    setProjects(prev=>[proj,...prev]);
     setToast({msg:"🚀 Projeto publicado!",type:"success"});
     back();
   };
 
-  const deposit=(amount)=>{
-    const updated={...user,balance:(user.balance||0)+amount};
-    setUser(updated);
-    setUsersDB(prev=>{const n={...prev,[user.email]:updated};SS("influx_users",n);return n;});
-    setToast({msg:`✅ R$ ${amount},00 adicionado ao saldo!`,type:"success"});
+  // Deposit: user registers deposit → pending for admin approval
+  const registerDeposit=(amount,comprovante)=>{
+    const dep={id:"dep"+Date.now(),userId:user.id,userName:user.name,amount,comprovante,status:"pending",date:now()};
+    setDeposits(prev=>[dep,...prev]);
+    setToast({msg:`⏳ Depósito de R$ ${amount},00 registrado! Aguardando aprovação do admin.`,type:"warn"});
+  };
+
+  // Admin approves deposit → adds balance to user
+  const approveDeposit=(depId,newStatus)=>{
+    setDeposits(prev=>prev.map(d=>d.id===depId?{...d,status:newStatus}:d));
+    if(newStatus==="approved"){
+      const dep=deposits.find(d=>d.id===depId);
+      if(dep){
+        setUsersDB(prev=>{
+          const u=prev[Object.keys(prev).find(k=>prev[k].id===dep.userId)];
+          if(!u)return prev;
+          const updated={...u,balance:(u.balance||0)+dep.amount};
+          const n={...prev,[u.email]:updated};
+          SS("influx_users",n);
+          return n;
+        });
+        setToast({msg:`✅ Depósito de R$ ${dep.amount},00 aprovado!`,type:"success"});
+      }
+    } else {
+      setToast({msg:"❌ Depósito recusado.",type:"warn"});
+    }
+  };
+
+  // Brand hires influencer: mark proposal as pixPending, notify influencer
+  const hireAccept=(cand,project,amount,comprovante)=>{
+    // Create new proposal for this hire
+    const newProp={
+      id:String(Date.now()).slice(-4),
+      type:project.type,
+      value:amount,
+      netValue:Math.floor(amount*0.8),
+      status:"created",
+      pixPending:true,
+      pixComprovante:comprovante||"",
+      date:now(),
+      influencerName:cand.name,
+      influencerAvatar:cand.avatar,
+      pixKey:PIX_KEY,
+      content:null,
+      messages:[],
+    };
+    setProposals(prev=>[newProp,...prev]);
+    // Notify influencer (stored for next login)
+    setInfNotifs(prev=>[{id:"n"+Date.now(),msg:`🎉 Você foi selecionado para "${project.title}"! Você tem 24h para enviar o conteúdo.`,read:false},...prev]);
+    setToast({msg:"✅ Pagamento registrado! Admin irá confirmar em breve.",type:"success"});
+    // Go to the new proposal timeline
+    setTimeout(()=>go("proposal",newProp),400);
+  };
+
+  // Admin approves/rejects PIX payment for proposal
+  const approveProposalPix=(propId,newStatus)=>{
+    setProposals(prev=>prev.map(p=>p.id===propId?{...p,status:newStatus,pixPending:false}:p));
+    setToast({msg:newStatus==="paid"?"✅ PIX aprovado! Influencer notificado.":"❌ PIX recusado.",type:newStatus==="paid"?"success":"warn"});
+    if(newStatus==="paid"){
+      // notify influencer
+      const prop=proposals.find(p=>p.id===propId);
+      if(prop) setInfNotifs(prev=>[{id:"n"+Date.now(),msg:`💰 Pagamento confirmado para proposta #${propId}! Você tem 24h para enviar o conteúdo. 🚀`,read:false},...prev]);
+    }
   };
 
   const applyProject=(p)=>{
@@ -917,10 +1100,14 @@ function App(){
   };
 
   // ADMIN
-  if(user?.role==="admin") return <Shell toast={toast} onClear={()=>setToast(null)}><AdminPanel proposals={proposals} onLogout={logout}/></Shell>;
+  if(user?.role==="admin") return <Shell toast={toast} onClear={()=>setToast(null)}>
+    <AdminPanel proposals={proposals} deposits={deposits} onApproveDeposit={approveDeposit} onApproveProposal={approveProposalPix} onLogout={logout}/>
+  </Shell>;
 
   // NOT LOGGED
-  if(!user) return <Shell toast={toast} onClear={()=>setToast(null)} white><AuthScreen onLogin={login} usersDB={usersDB} setUsersDB={setUsersDB}/></Shell>;
+  if(!user) return <Shell toast={toast} onClear={()=>setToast(null)} white>
+    <AuthScreen onLogin={login} usersDB={usersDB} setUsersDB={setUsersDB}/>
+  </Shell>;
 
   const isBrand=user.role==="brand";
   const navItems=isBrand
@@ -932,12 +1119,9 @@ function App(){
   const renderContent=()=>{
     if(screen){
       if(screen.type==="proposal"){const live=getLiveProposal(screen.data);return <ProposalTimeline proposal={live} role={user.role} onBack={back} onAction={(s,c)=>advanceProposal(live.id,s,c)} onChat={()=>go("chat",getLiveProposal(screen.data))}/>;}
-      if(screen.type==="chat"){
-        const live=getLiveProposal(screen.data);
-        return <ChatScreen proposal={live} role={user.role} onBack={back} onSend={sendMsg}/>;
-      }
+      if(screen.type==="chat"){return <ChatScreen proposal={getLiveProposal(screen.data)} role={user.role} onBack={back} onSend={sendMsg}/>;}
       if(screen.type==="create") return <CreateProject onBack={back} onDone={addProject}/>;
-      if(screen.type==="project-detail") return <ProjectDetail project={screen.data} proposals={proposals} onBack={back} onHireProposal={p=>go("proposal",p)}/>;
+      if(screen.type==="project-detail") return <ProjectDetail project={screen.data} proposals={proposals} onBack={back} onHireProposal={p=>go("proposal",p)} onHireAccept={hireAccept}/>;
       if(screen.type==="edit-profile") return isBrand
         ?<BrandEditProfile user={user} onBack={back} onSave={saveUser}/>
         :<InfProfileEdit user={user} onBack={back} onSave={saveUser}/>;
@@ -963,7 +1147,7 @@ function App(){
     if(isBrand){
       if(tab==="home") return <BrandHome user={user} onTab={setTab} onGo={go} proposals={proposals}/>;
       if(tab==="explore") return <ExploreScreen onInfluencer={inf=>go("inf-detail",inf)}/>;
-      if(tab==="finance") return <BrandFinance user={user} proposals={proposals} onDeposit={deposit}/>;
+      if(tab==="finance") return <BrandFinance user={user} proposals={proposals} onDeposit={registerDeposit}/>;
       if(tab==="projects") return <BrandProjects proposals={proposals} projects={projects} onCreate={()=>go("create")} onViewProposal={p=>go("proposal",p)} onViewProject={p=>go("project-detail",p)}/>;
       if(tab==="profile") return <ProfileScreen user={user} onLogout={logout} onEdit={()=>go("edit-profile")}/>;
     } else {
