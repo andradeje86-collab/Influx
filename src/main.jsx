@@ -293,73 +293,175 @@ function ChatScreen({proposal,role,onBack,onSend}){
 // ══════════════════════════════════════════════════════════════════════════════
 // PROPOSAL TIMELINE
 // ══════════════════════════════════════════════════════════════════════════════
+
+// Status label/color helpers for influencer banner
+const INF_STATUS_INFO = {
+  created:     { icon:"⏳", label:"Aguardando pagamento da marca",      color:T.warn,    bg:"#fff8e1" },
+  paid:        { icon:"💰", label:"Pagamento confirmado! Prepare sua publi.", color:"#1565C0", bg:"#e3f2fd" },
+  in_progress: { icon:"🚀", label:"Em andamento — envie o conteúdo abaixo!", color:T.purple,  bg:"#f0ebff" },
+  upload_done: { icon:"📤", label:"Conteúdo enviado! Aguardando aprovação.", color:T.warn,   bg:"#fff8e1" },
+  approved:    { icon:"✅", label:"Aprovado! PIX em até 24h para sua chave.", color:"#2E7D32", bg:"#e8f5e9" },
+  completed:   { icon:"🏆", label:"Proposta concluída com sucesso!",          color:T.purple,  bg:"#f3e5f5" },
+};
+
 function ProposalTimeline({proposal,role,onAction,onChat,onBack}){
   const [showPix,setShowPix]=useState(false);
-  const [showContent,setShowContent]=useState(false);
   const fileRef=useRef();
   const curIdx=S_ORDER.indexOf(proposal.status);
+  const statusInfo=INF_STATUS_INFO[proposal.status]||{icon:"📄",label:proposal.status,color:T.sub,bg:T.bg};
 
   const handleContentUpload=e=>{
     const f=e.target.files[0];if(!f)return;
-    const r=new FileReader();r.onload=ev=>onAction("upload_done",ev.target.result);r.readAsDataURL(f);
+    const r=new FileReader();
+    r.onload=ev=>onAction("upload_done",ev.target.result);
+    r.readAsDataURL(f);
   };
 
-  return <div style={{flex:1,overflowY:"auto",background:T.bg}}>
+  return <div style={{flex:1,overflowY:"auto",background:T.bg,position:"relative"}}>
     {showPix&&<PixModal amount={proposal.value} onPay={()=>{setShowPix(false);onAction("paid");}} onClose={()=>setShowPix(false)}/>}
+
     <Hdr title="Proposta" sub={`#${proposal.id} · ${proposal.type}`} onBack={onBack} dark/>
-    <div style={{padding:"16px 20px 8px"}}>
-      {/* Timeline */}
-      <Card style={{padding:"20px 16px"}}>
-        <div style={{fontSize:14,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",marginBottom:14}}>📍 Linha do Tempo</div>
-        {STATUS_STEPS.map((step,i)=>{
-          const done=i<curIdx,active=i===curIdx,future=i>curIdx;
-          return <div key={step.key} style={{display:"flex",gap:16}}>
-            <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:20,flexShrink:0}}>
-              <div style={{width:18,height:18,borderRadius:"50%",background:done?T.pink:active?T.purpleDark:"#ccc",border:active?`3px solid ${T.purple}`:"none",boxShadow:active?"0 0 0 4px rgba(108,74,182,.2)":"none",flexShrink:0,marginTop:6}}/>
-              {i<STATUS_STEPS.length-1&&<div style={{width:2,flex:1,minHeight:26,background:done?T.pink:"#e0e0e0",marginTop:2}}/>}
+
+    {/* ── Influencer status banner ── */}
+    {role==="influencer"&&(
+      <div style={{margin:"14px 20px 0",padding:"14px 16px",background:statusInfo.bg,borderRadius:16,border:`1.5px solid ${statusInfo.color}22`}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:26}}>{statusInfo.icon}</span>
+          <div>
+            <div style={{fontSize:13,fontWeight:700,color:statusInfo.color,fontFamily:"Poppins,sans-serif"}}>{statusInfo.label}</div>
+            {(proposal.status==="paid"||proposal.status==="in_progress")&&(
+              <div style={{fontSize:11,color:T.sub,fontFamily:"Poppins,sans-serif",marginTop:2}}>⏰ Você tem 24 horas para enviar o conteúdo</div>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+
+    <div style={{padding:"14px 20px 20px"}}>
+
+      {/* Value card */}
+      <Card>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          {role==="brand"
+            ?<div><div style={{fontSize:12,color:T.sub,fontFamily:"Poppins,sans-serif"}}>Valor total</div><div style={{fontSize:22,fontWeight:800,color:T.purple,fontFamily:"Poppins,sans-serif"}}>R$ {proposal.value},00</div></div>
+            :<div><div style={{fontSize:12,color:T.sub,fontFamily:"Poppins,sans-serif"}}>Você vai receber</div><div style={{fontSize:28,fontWeight:900,color:T.success,fontFamily:"Poppins,sans-serif"}}>R$ {proposal.netValue},00</div><div style={{fontSize:11,color:T.sub,fontFamily:"Poppins,sans-serif",marginTop:2}}>Pago via PIX após aprovação da marca</div></div>
+          }
+          <Badge s={proposal.status}/>
+        </div>
+        {role==="influencer"&&proposal.pixKey&&(
+          <div style={{marginTop:10,padding:"8px 12px",background:"#f0ebff",borderRadius:10,fontSize:11,color:T.purple,fontFamily:"Poppins,sans-serif",fontWeight:600}}>
+            🔑 Chave PIX cadastrada: {proposal.pixKey}
+          </div>
+        )}
+      </Card>
+
+      {/* ── Influencer action area (prominent, before timeline) ── */}
+      {role==="influencer"&&(
+        <div style={{marginBottom:14}}>
+          {proposal.status==="in_progress"&&(
+            <div style={{background:T.grad2,borderRadius:18,padding:"18px 18px",marginBottom:10}}>
+              <div style={{fontSize:14,fontWeight:800,color:T.white,fontFamily:"Poppins,sans-serif",marginBottom:4}}>📤 Sua vez de agir!</div>
+              <div style={{fontSize:12,color:"rgba(255,255,255,.85)",fontFamily:"Poppins,sans-serif",marginBottom:14}}>Faça a publi e envie o conteúdo aqui para a marca aprovar.</div>
+              <input ref={fileRef} type="file" accept="image/*,video/*" onChange={handleContentUpload} style={{display:"none"}}/>
+              <Btn label="📎 Enviar imagem/vídeo da publi" onClick={()=>fileRef.current.click()} v="purple" full/>
             </div>
-            <div style={{paddingBottom:i<STATUS_STEPS.length-1?16:0,paddingTop:4,flex:1}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:17}}>{step.icon}</span>
-                <span style={{fontSize:13,fontWeight:700,color:future?T.sub:T.text,fontFamily:"Poppins,sans-serif"}}>{step.label}</span>
+          )}
+          {proposal.status==="paid"&&(
+            <div style={{background:T.grad1,borderRadius:18,padding:"18px 18px",marginBottom:10}}>
+              <div style={{fontSize:14,fontWeight:800,color:T.white,fontFamily:"Poppins,sans-serif",marginBottom:4}}>💰 Pagamento confirmado!</div>
+              <div style={{fontSize:12,color:"rgba(255,255,255,.85)",fontFamily:"Poppins,sans-serif",marginBottom:14}}>Realize a publi e envie o conteúdo. Você tem 24h! ⏰</div>
+              <input ref={fileRef} type="file" accept="image/*,video/*" onChange={handleContentUpload} style={{display:"none"}}/>
+              <Btn label="📎 Já fiz! Enviar conteúdo" onClick={()=>fileRef.current.click()} v="green" full/>
+            </div>
+          )}
+          {proposal.status==="created"&&(
+            <div style={{background:"#fff8e1",borderRadius:16,padding:"14px 16px",border:`1.5px solid #FFD54F`}}>
+              <div style={{fontSize:13,fontWeight:700,color:T.warn,fontFamily:"Poppins,sans-serif",marginBottom:4}}>⏳ Aguardando pagamento</div>
+              <div style={{fontSize:12,color:T.sub,fontFamily:"Poppins,sans-serif"}}>A marca está processando o pagamento. Você será notificado assim que for confirmado.</div>
+            </div>
+          )}
+          {proposal.status==="upload_done"&&(
+            <div style={{background:"#e3f2fd",borderRadius:16,padding:"14px 16px",border:`1.5px solid #90CAF9`}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#1565C0",fontFamily:"Poppins,sans-serif",marginBottom:4}}>📤 Conteúdo enviado!</div>
+              <div style={{fontSize:12,color:T.sub,fontFamily:"Poppins,sans-serif"}}>Aguardando a marca revisar e aprovar. Você será avisado!</div>
+            </div>
+          )}
+          {proposal.status==="approved"&&(
+            <div style={{background:"#e8f5e9",borderRadius:16,padding:"14px 16px",border:`1.5px solid #A5D6A7`}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#2E7D32",fontFamily:"Poppins,sans-serif",marginBottom:4}}>✅ Aprovado! Pagamento a caminho</div>
+              <div style={{fontSize:12,color:T.sub,fontFamily:"Poppins,sans-serif"}}>Transferência PIX de <b style={{color:T.success}}>R$ {proposal.netValue},00</b> em até 24h para {proposal.pixKey||"sua chave"}</div>
+            </div>
+          )}
+          {proposal.status==="completed"&&(
+            <div style={{background:"#f3e5f5",borderRadius:16,padding:"14px 16px",border:`1.5px solid #CE93D8`}}>
+              <div style={{fontSize:13,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",marginBottom:4}}>🏆 Parabéns! Publi concluída</div>
+              <div style={{fontSize:12,color:T.sub,fontFamily:"Poppins,sans-serif"}}>Você recebeu R$ {proposal.netValue},00 via PIX. Obrigado!</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Uploaded content preview */}
+      {proposal.content&&(
+        <Card style={{marginBottom:14}}>
+          <div style={{fontSize:13,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",marginBottom:8}}>📎 Conteúdo enviado</div>
+          <img src={proposal.content} alt="conteúdo" style={{width:"100%",borderRadius:12,objectFit:"cover",maxHeight:220}}/>
+        </Card>
+      )}
+
+      {/* Timeline card */}
+      <Card style={{padding:"18px 16px"}}>
+        <div style={{fontSize:13,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",marginBottom:14}}>📍 Linha do Tempo</div>
+        {STATUS_STEPS.map((step,i)=>{
+          const done=i<curIdx, active=i===curIdx, future=i>curIdx;
+          return <div key={step.key} style={{display:"flex",gap:14}}>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:22,flexShrink:0}}>
+              <div style={{
+                width:20,height:20,borderRadius:"50%",
+                background:done?"#FF006E":active?"#4A2F8A":"#ddd",
+                border:active?`3px solid ${T.purple}`:"none",
+                boxShadow:active?"0 0 0 5px rgba(108,74,182,.18)":"none",
+                flexShrink:0,marginTop:5,
+                display:"flex",alignItems:"center",justifyContent:"center"
+              }}>
+                {done&&<span style={{fontSize:10,color:T.white}}>✓</span>}
               </div>
-              <div style={{fontSize:11,color:T.sub,fontFamily:"Poppins,sans-serif",marginTop:2,lineHeight:1.5}}>{step.desc}</div>
+              {i<STATUS_STEPS.length-1&&<div style={{width:2,flex:1,minHeight:24,background:done?"#FF006E":"#e0e0e0",marginTop:2}}/>}
+            </div>
+            <div style={{paddingBottom:i<STATUS_STEPS.length-1?14:0,paddingTop:3,flex:1}}>
+              <div style={{display:"flex",alignItems:"center",gap:7}}>
+                <span style={{fontSize:16}}>{step.icon}</span>
+                <span style={{
+                  fontSize:13,fontWeight:active?800:600,
+                  color:done?T.pink:active?T.purple:T.sub,
+                  fontFamily:"Poppins,sans-serif"
+                }}>{step.label}</span>
+                {active&&<span style={{fontSize:10,background:T.purple,color:T.white,padding:"2px 7px",borderRadius:50,fontFamily:"Poppins,sans-serif",fontWeight:700}}>AGORA</span>}
+              </div>
+              {(active||done)&&<div style={{fontSize:11,color:T.sub,fontFamily:"Poppins,sans-serif",marginTop:2,lineHeight:1.5}}>{step.desc}</div>}
             </div>
           </div>;
         })}
       </Card>
 
-      {/* Values */}
-      <Card>
-        {role==="brand"
-          ?<div><div style={{fontSize:12,color:T.sub,fontFamily:"Poppins,sans-serif"}}>Valor total da proposta</div><div style={{fontSize:22,fontWeight:800,color:T.purple,fontFamily:"Poppins,sans-serif"}}>R$ {proposal.value},00</div></div>
-          :<div><div style={{fontSize:12,color:T.sub,fontFamily:"Poppins,sans-serif"}}>Você vai receber</div><div style={{fontSize:26,fontWeight:900,color:T.success,fontFamily:"Poppins,sans-serif"}}>R$ {proposal.netValue},00</div><div style={{fontSize:11,color:T.sub,fontFamily:"Poppins,sans-serif",marginTop:2}}>Pago via PIX após aprovação</div></div>
-        }
-        {role==="influencer"&&proposal.pixKey&&<div style={{marginTop:10,padding:"8px 12px",background:"#f0ebff",borderRadius:10,fontSize:11,color:T.purple,fontFamily:"Poppins,sans-serif",fontWeight:600}}>🔑 PIX: {proposal.pixKey}</div>}
-      </Card>
-
-      {/* Content viewer */}
-      {proposal.content&&<Card>
-        <div style={{fontSize:13,fontWeight:700,color:T.purple,fontFamily:"Poppins,sans-serif",marginBottom:8}}>📎 Conteúdo enviado</div>
-        <img src={proposal.content} alt="conteúdo" style={{width:"100%",borderRadius:12,objectFit:"cover",maxHeight:200}}/>
-      </Card>}
-
-      {/* Actions */}
+      {/* Chat button */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
         <Btn label="💬 Chat" onClick={onChat} v="pink"/>
-        {!["completed","approved"].includes(proposal.status)&&<Btn label="🚫 Cancelar" onClick={()=>alert("Confirmar cancelamento?")} v="danger"/>}
+        {!["completed","approved","upload_done"].includes(proposal.status)&&(
+          <Btn label="🚫 Cancelar" onClick={()=>alert("Confirmar cancelamento?")} v="danger"/>
+        )}
       </div>
 
-      {/* Role-based actions */}
-      {role==="brand"&&proposal.status==="created"&&<Btn label="💰 Pagar via PIX" onClick={()=>setShowPix(true)} v="green" full/>}
-      {role==="brand"&&proposal.status==="upload_done"&&<Btn label="✅ Aprovar e liberar pagamento" onClick={()=>onAction("approved")} v="green" full/>}
-      {role==="influencer"&&proposal.status==="in_progress"&&(
+      {/* Brand-only actions */}
+      {role==="brand"&&proposal.status==="created"&&(
+        <Btn label="💰 Pagar via PIX" onClick={()=>setShowPix(true)} v="green" full/>
+      )}
+      {role==="brand"&&proposal.status==="upload_done"&&(
         <div>
-          <input ref={fileRef} type="file" accept="image/*,video/*" onChange={handleContentUpload} style={{display:"none"}}/>
-          <Btn label="📤 Enviar conteúdo e avisar marca" onClick={()=>fileRef.current.click()} v="green" full/>
+          {proposal.content&&<div style={{marginBottom:10,padding:"10px 14px",background:"#f0ebff",borderRadius:12,fontSize:12,color:T.purple,fontFamily:"Poppins,sans-serif",fontWeight:600}}>👆 Veja o conteúdo acima antes de aprovar</div>}
+          <Btn label="✅ Aprovar conteúdo e liberar pagamento" onClick={()=>onAction("approved")} v="green" full/>
         </div>
       )}
-      {proposal.status==="approved"&&<div style={{marginTop:12,padding:"12px 16px",background:"#e8f5e9",borderRadius:14,fontSize:12,color:"#2E7D32",fontFamily:"Poppins,sans-serif",fontWeight:600,textAlign:"center"}}>⚡ Transferência PIX em até 24h para {proposal.pixKey||"sua chave cadastrada"}</div>}
     </div>
   </div>;
 }
